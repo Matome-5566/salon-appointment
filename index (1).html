@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Premium Barber</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; }
+        header { background: #222; color: #fff; padding: 1em; text-align: center; }
+        nav { display: flex; justify-content: center; background: #333; }
+        nav button { background: #333; color: #fff; border: none; padding: 1em; cursor: pointer; font-size: 1em; }
+        nav button.active { background: #555; }
+        .container { max-width: 500px; margin: 2em auto; background: #fff; padding: 2em; border-radius: 8px; box-shadow: 0 0 10px #ccc; }
+        .hidden { display: none; }
+        label { display: block; margin-top: 1em; }
+        select, input[type="text"], input[type="date"], input[type="password"] { width: 100%; padding: 0.5em; margin-top: 0.5em; }
+        button[type="submit"] { background: #222; color: #fff; padding: 1em; border: none; margin-top: 1.5em; width: 100%; border-radius: 5px; cursor: pointer; }
+        table { width: 100%; border-collapse: collapse; margin-top: 2em; }
+        th, td { border: 1px solid #ccc; padding: 0.5em; text-align: left; }
+        th { background: #eee; }
+        .pin-form { margin-top: 2em; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Premium Barber</h1>
+        <p>Book your hair cut appointment online!</p>
+    </header>
+    <nav>
+        <button id="bookTab" class="active" onclick="showTab('book')">Book Appointment</button>
+        <button id="appointmentsTab" onclick="showTab('appointments')">Appointments</button>
+    </nav>
+    <div class="container">
+        <!-- Booking Tab -->
+        <div id="bookSection">
+            <form id="bookingForm">
+                <label for="clientName">Your Name:</label>
+                <input type="text" id="clientName" name="clientName" required maxlength="50">
+
+                <label for="day">Select Day:</label>
+                <select id="day" name="day" required></select>
+
+                <label for="time">Select Time Slot:</label>
+                <select id="time" name="time" required></select>
+
+                <button type="submit">Book Appointment</button>
+            </form>
+            <div id="bookingSuccess" class="hidden" style="color: green; margin-top:1em;">Appointment booked successfully!</div>
+        </div>
+
+        <!-- Appointments Tab -->
+        <div id="appointmentsSection" class="hidden">
+            <form id="pinForm" class="pin-form">
+                <label for="pin">Enter PIN to view appointments:</label>
+                <input type="password" id="pin" maxlength="8" required placeholder="Enter PIN">
+                <button type="submit">View Appointments</button>
+            </form>
+            <div id="pinError" style="color: red; display:none; margin-top:1em;">Incorrect PIN!</div>
+            <div id="appointmentsTable" class="hidden">
+                <h2>Booked Appointments</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Day</th>
+                            <th>Time</th>
+                        </tr>
+                    </thead>
+                    <tbody id="appointmentsBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <script>
+        // Constants
+        const OPEN_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+        const OPEN_TIMES = [
+            "08:00", "10:00", "12:00", "14:00", "16:00", "18:00"
+        ]; // 2 hour slots
+        const PIN = "8888";
+
+        // Populate day select
+        const daySelect = document.getElementById('day');
+        OPEN_DAYS.forEach(day => {
+            let option = document.createElement('option');
+            option.value = day;
+            option.textContent = day;
+            daySelect.appendChild(option);
+        });
+
+        // Populate time select
+        const timeSelect = document.getElementById('time');
+        OPEN_TIMES.forEach(time => {
+            let option = document.createElement('option');
+            option.value = time;
+            option.textContent = time + " - " + (addHours(time, 2));
+            timeSelect.appendChild(option);
+        });
+
+        function addHours(time, hrs) {
+            let [h, m] = time.split(':').map(Number);
+            h += hrs;
+            if (h < 10) return "0" + h + ":" + m.toString().padStart(2, '0');
+            return h + ":" + m.toString().padStart(2, '0');
+        }
+
+        // Switch tabs
+        function showTab(tab) {
+            document.getElementById('bookTab').classList.remove('active');
+            document.getElementById('appointmentsTab').classList.remove('active');
+            document.getElementById('bookSection').classList.add('hidden');
+            document.getElementById('appointmentsSection').classList.add('hidden');
+            if(tab === 'book') {
+                document.getElementById('bookTab').classList.add('active');
+                document.getElementById('bookSection').classList.remove('hidden');
+            } else {
+                document.getElementById('appointmentsTab').classList.add('active');
+                document.getElementById('appointmentsSection').classList.remove('hidden');
+            }
+        }
+
+        // Handle booking
+        document.getElementById('bookingForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const name = document.getElementById('clientName').value.trim();
+            const day = document.getElementById('day').value;
+            const time = document.getElementById('time').value;
+            if (!name) return;
+            // Save appointment in localStorage
+            let appointments = JSON.parse(localStorage.getItem('premiumBarberAppointments') || "[]");
+            appointments.push({ name, day, time });
+            localStorage.setItem('premiumBarberAppointments', JSON.stringify(appointments));
+            document.getElementById('bookingForm').reset();
+            document.getElementById('bookingSuccess').classList.remove('hidden');
+            setTimeout(() => {
+                document.getElementById('bookingSuccess').classList.add('hidden');
+            }, 2000);
+        });
+
+        // Handle PIN form
+        document.getElementById('pinForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const inputPin = document.getElementById('pin').value;
+            if (inputPin === PIN) {
+                document.getElementById('pinError').style.display = 'none';
+                showAppointments();
+            } else {
+                document.getElementById('pinError').style.display = '';
+                document.getElementById('appointmentsTable').classList.add('hidden');
+            }
+            document.getElementById('pinForm').reset();
+        });
+
+        // Show appointments
+        function showAppointments() {
+            let appointments = JSON.parse(localStorage.getItem('premiumBarberAppointments') || "[]");
+            let tbody = document.getElementById('appointmentsBody');
+            tbody.innerHTML = '';
+            appointments.forEach(app => {
+                let tr = document.createElement('tr');
+                tr.innerHTML = `<td>${escapeHtml(app.name)}</td><td>${app.day}</td><td>${app.time} - ${addHours(app.time, 2)}</td>`;
+                tbody.appendChild(tr);
+            });
+            document.getElementById('appointmentsTable').classList.remove('hidden');
+        }
+
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+
+        // Default tab
+        showTab('book');
+    </script>
+</body>
+</html>
